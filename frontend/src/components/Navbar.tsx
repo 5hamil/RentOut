@@ -80,7 +80,7 @@ export function Navbar() {
                       <CalendarDays strokeWidth={1.5} className="h-4 w-4" />
                       My Trips
                     </Link>
-                    {user?.role === 'ADMIN' && (
+                    {user?.isAdmin && (
                       <Link href="/admin" onClick={() => setIsDropdownOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-xl transition-colors mt-1">
                         <Shield strokeWidth={1.5} className="h-4 w-4" />
                         Admin Panel

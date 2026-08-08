@@ -8,7 +8,6 @@ export interface AuthUser {
   verificationStatus: 'unverified' | 'pending' | 'verified' | 'rejected' | 'permanently_blocked';
   resubmissionCount: number;
   isAdmin: boolean;
-  role?: 'USER' | 'ADMIN';
   tosAcceptedAt: string | null;
   tosVersion: string | null;
   createdAt: string;
