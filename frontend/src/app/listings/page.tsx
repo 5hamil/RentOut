@@ -6,7 +6,7 @@ import FiltersBar, { FilterState } from './_components/FiltersBar';
 import ListingCard from './_components/ListingCard';
 import { ListingCardSkeleton } from './_components/ListingCardSkeleton';
 import { SearchX } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 
 // Dynamically import map to avoid SSR 'window is not defined' errors
 const ListingsMap = dynamic(() => import('./_components/ListingsMap'), {
@@ -110,7 +110,7 @@ export default function DiscoveryPage() {
     setFilters(prev => ({ ...prev, ...updates }));
   }, []);
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -120,7 +120,7 @@ export default function DiscoveryPage() {
     },
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } },
   };
