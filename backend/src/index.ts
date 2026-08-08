@@ -22,6 +22,7 @@ import disputesRouter from './routes/disputes';
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1); // Required for secure cookies behind load balancers (e.g., Render)
 app.use(helmet());
 const server = http.createServer(app);
 

@@ -25,7 +25,7 @@ export const generateCsrfToken = (req: Request, res: Response) => {
   res.cookie('csrfToken', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     path: '/'
   });
   res.json({ csrfToken: token });
