@@ -16,11 +16,6 @@ const nextConfig: NextConfig = {
         hostname: 'res.cloudinary.com',
       },
     ],
-  },
-  devIndicators: {
-    appIsrStatus: false,
-    buildActivity: false,
-  },
 };
 
 export default nextConfig;
