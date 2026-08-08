@@ -1,0 +1,356 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum VerificationStatus {
+  unverified
+  pending
+  verified
+  rejected
+  permanently_blocked
+}
+
+enum ListingCategory {
+  camera
+  drone
+  projector
+  console
+  laptop
+  audio
+  other
+}
+
+enum ListingStatus {
+  active
+  paused
+  removed
+}
+
+enum BookingStatus {
+  requested
+  confirmed
+  ongoing
+  completed
+  cancelled
+  disputed
+}
+
+enum DepositStatus {
+  held
+  released
+  partially_withheld
+  forfeited
+}
+
+enum DisputeStatus {
+  open
+  under_review
+  resolved
+}
+
+enum ReportTargetType {
+  user
+  listing
+  review
+}
+
+enum ReportStatus {
+  pending
+  reviewed
+  dismissed
+  actioned
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Core user model. idDocumentUrl is sensitive and must NEVER be exposed in
+/// any public-facing API response — always use select/omit when querying.
+model User {
+  id           String @id @default(uuid()) @db.Uuid
+  name         String
+  email        String @unique
+  phone        String @unique
+  passwordHash String
+
+  // Profile
+  profileImage String?
+  avgRating    Float?  @default(0)
+
+  // ID Verification
+  verificationStatus VerificationStatus @default(unverified)
+  resubmissionCount  Int                @default(0)
+  /// ⚠️  PRIVATE — never include in any public API response.
+  idDocumentUrl      String?
+
+  isSuspended        Boolean            @default(false)
+  isAdmin            Boolean            @default(false)
+  isFlagged          Boolean            @default(false)
+
+  // Terms of Service
+  tosAcceptedAt DateTime?
+  tosVersion    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Auth tokens
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+
+  // Relations
+  listings         Listing[]      @relation("OwnerListings")
+  bookingsAsRenter Booking[]      @relation("RenterBookings")
+  bookingsAsOwner  Booking[]      @relation("OwnerBookings")
+  sentMessages     Message[]      @relation("SentMessages")
+  reviewsGiven     Review[]       @relation("ReviewsGiven")
+  reviewsReceived  Review[]       @relation("ReviewsReceived")
+  disputesFiled    DisputeClaim[] @relation("DisputesFiled")
+  reportsSubmitted Report[]       @relation("ReportsSubmitted")
+
+  @@index([verificationStatus])
+  @@index([email])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTH TOKENS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Stores SHA-256 hashed refresh tokens for the rotation pattern.
+model RefreshToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  /// SHA-256 hash of the actual refresh token JWT — never store raw.
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+/// One-time password-reset tokens, expire in 1 hour.
+model PasswordResetToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  /// SHA-256 hash of the raw token sent to the user's email.
+  tokenHash String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LISTING
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Listing {
+  id      String @id @default(uuid()) @db.Uuid
+  ownerId String @db.Uuid
+
+  // Content
+  title         String
+  description   String          @db.Text
+  category      ListingCategory
+  pricePerDay   Decimal         @db.Decimal(10, 2)
+  depositAmount Decimal         @db.Decimal(10, 2)
+
+  // Location
+  location  String
+  latitude  Float
+  longitude Float
+
+  // Media
+  images String[]
+
+  // Availability window
+  availabilityStart DateTime
+  availabilityEnd   DateTime
+  blockedDates      DateTime[]
+
+  // Lifecycle
+  status ListingStatus @default(active)
+  isFlagged Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  owner    User      @relation("OwnerListings", fields: [ownerId], references: [id], onDelete: Cascade)
+  bookings Booking[] @relation("ListingBookings")
+
+  @@index([category])
+  @@index([status])
+  @@index([ownerId])
+  @@index([location])
+  @@index([latitude, longitude])
+  @@map("listings")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BOOKING
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Booking {
+  id        String @id @default(uuid()) @db.Uuid
+  listingId String @db.Uuid
+  renterId  String @db.Uuid
+  ownerId   String @db.Uuid
+
+  // Period
+  startDate DateTime
+  endDate   DateTime
+
+  // Financials
+  totalPrice    Decimal       @db.Decimal(10, 2)
+  depositAmount Decimal       @db.Decimal(10, 2)
+  depositStatus DepositStatus @default(held)
+
+  // Lifecycle
+  status BookingStatus @default(requested)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  listing  Listing       @relation("ListingBookings", fields: [listingId], references: [id])
+  renter   User          @relation("RenterBookings", fields: [renterId], references: [id])
+  owner    User          @relation("OwnerBookings", fields: [ownerId], references: [id])
+  messages Message[]     @relation("BookingMessages")
+  reviews  Review[]      @relation("BookingReviews")
+  dispute  DisputeClaim? @relation("BookingDispute")
+
+  @@index([status])
+  @@index([renterId])
+  @@index([ownerId])
+  @@index([listingId])
+  @@map("bookings")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MESSAGE  (real-time chat, persisted per booking)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Message {
+  id        String   @id @default(uuid()) @db.Uuid
+  bookingId String   @db.Uuid
+  senderId  String   @db.Uuid
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  // Relations
+  booking Booking @relation("BookingMessages", fields: [bookingId], references: [id], onDelete: Cascade)
+  sender  User    @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@index([bookingId])
+  @@index([senderId])
+  @@map("messages")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REVIEW
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Review {
+  id         String @id @default(uuid()) @db.Uuid
+  bookingId  String @db.Uuid
+  reviewerId String @db.Uuid
+  revieweeId String @db.Uuid
+
+  rating  Int // 1-5 enforced at application level
+  comment String @db.Text
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  booking  Booking @relation("BookingReviews", fields: [bookingId], references: [id])
+  reviewer User    @relation("ReviewsGiven", fields: [reviewerId], references: [id])
+  reviewee User    @relation("ReviewsReceived", fields: [revieweeId], references: [id])
+
+  /// Each user can only leave one review per booking
+  @@unique([bookingId, reviewerId])
+  @@index([revieweeId])
+  @@index([reviewerId])
+  @@map("reviews")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DISPUTE CLAIM
+// ─────────────────────────────────────────────────────────────────────────────
+
+model DisputeClaim {
+  id        String @id @default(uuid()) @db.Uuid
+  bookingId String @unique @db.Uuid
+  filedById String @db.Uuid
+
+  reason         String   @db.Text
+  evidenceImages String[]
+
+  opposingReason         String?  @db.Text
+  opposingEvidenceImages String[]
+
+  status          DisputeStatus @default(open)
+  resolutionNotes String?       @db.Text
+
+  /// Amount of deposit to withhold/refund upon resolution.
+  depositResolutionAmount Decimal? @db.Decimal(10, 2)
+
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relations
+  booking Booking @relation("BookingDispute", fields: [bookingId], references: [id])
+  filedBy User    @relation("DisputesFiled", fields: [filedById], references: [id])
+
+  @@index([status])
+  @@index([filedById])
+  @@map("dispute_claims")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REPORT
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Generic abuse / flag report. targetId references a User, Listing, or Review
+/// depending on targetType. Polymorphic — enforce referential integrity at the
+/// application layer.
+model Report {
+  id         String @id @default(uuid()) @db.Uuid
+  reporterId String @db.Uuid
+
+  targetType ReportTargetType
+  targetId   String           @db.Uuid // polymorphic — no FK by design
+
+  reason String       @db.Text
+  status ReportStatus @default(pending)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  reporter User @relation("ReportsSubmitted", fields: [reporterId], references: [id])
+
+  @@index([reporterId])
+  @@index([targetType, targetId])
+  @@index([status])
+  @@map("reports")
+}

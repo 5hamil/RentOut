@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+/* ── Design Tokens ─────────────────────────────────────────── */
+@theme {
+  --color-primary: #00A67E;
+  --color-primary-hover: #008f6b;
+  --color-primary-light: #e6f7f2;
+  
+  --color-background: #F7F8FA;
+  --color-surface: #FFFFFF;
+  --color-foreground: #111827;
+  --color-muted: #6B7280;
+  
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-outfit), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.05);
+  --shadow-float: 0 8px 30px rgba(0, 0, 0, 0.08);
+}
+
+:root {
+  --background: var(--color-background);
+  --foreground: var(--color-foreground);
+  --accent: var(--color-primary);
+}
+
+/* ── Base ──────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Smooth focus rings ─────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Custom scrollbar ──────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* ── Selection color ───────────────────────────────────────── */
+::selection {
+  background-color: #b3ead8;
+  color: #065f46;
+}
