@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { ListingDraft, EMPTY_DRAFT } from '@/types/listing';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 
 import { request } from '@/lib/api';
 import Step1Details from './_components/Step1Details';
@@ -138,7 +138,7 @@ export default function CreateListingPage() {
   }
 
   // Animation variants
-  const variants = {
+  const variants: Variants = {
     initial: (direction: number) => ({
       x: direction > 0 ? '20%' : '-20%',
       opacity: 0,
